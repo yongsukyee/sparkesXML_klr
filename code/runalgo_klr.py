@@ -13,7 +13,8 @@ import time
 
 DIR         = '/datasets/work/mlaifsp-sparkes/work/sparkesX/multi/simplepulse/'
 FNAME       = 'simplepulse_multi_01.sf'
-OUTPUT_DIR  = '../outputs/'
+OUTPUT_DIR  = DIR + FNAME[:-3] + '/outputs/'
+#OUTPUT_DIR  = '../outputs/'
 TIME_CHUNK  = 50
 
 def main(fname, plot_inputs = False, plot_predictions=False):
@@ -23,19 +24,22 @@ def main(fname, plot_inputs = False, plot_predictions=False):
     matplotlib_config()
 
     # Initialise KLR model
-    #klr = Klr(None, precomputed_kernel=False)
-    klr = None
-
+    klr = Klr(None, precomputed_kernel=False)
     # Load file
     psrfile = pypsrfits.PSRFITS(DIR + fname)
+    # Get sim labels
+    _, y_sim, sim, tframe = evalmetricsim.read_simlabel(DIR + fname, datadir='')
+    print(y_sim)
     
-    fout = open(OUTPUT_DIR + FNAME[:-3] + '.out', 'w')
+    fout = open(OUTPUT_DIR + FNAME[:-3] + '.txt', 'w')
     fout.write('# subint t0 t1\n')
    
     #####
     # RUN ALGORITHM
     # Input bdata: 2d array with dimension [nfrequency, ntime]
     #####
+    all_scores = []
+    all_times = []
     for nrow in range(psrfile.nrows_file):
         compute_t0 = time.time()
         bdata, times, _ = psrfile.getData(nrow, None, get_ft=True, 
@@ -43,24 +47,32 @@ def main(fname, plot_inputs = False, plot_predictions=False):
         X, data = _make_X_data_pair(bdata, times)
         _plot_data_chunk(X, data, 'subints/' + str(nrow))
         t_indices = np.arange(0, bdata.shape[1], TIME_CHUNK)
-        pool = Pool(processes=28)
+        pool = Pool(processes=64)
         scores = pool.map(partial(score_chunk, bdata, times, klr, nrow), t_indices)
         pool.close()
         pool.join()
         
         print('Subint ' + str(nrow) + ' took ' + str(time.time() - compute_t0)\
             + ' seconds.')
-        print(scores)
+        update_scores_and_plot(all_scores, scores, all_times, times)
+
         # Save to output if yes
         #fout.write(f"{nrow} {times[0]} {times[-1]}\n")
 
     fout.close()
     
-    # Get sim labels
-    _, y_sim, sim, tframe = evalmetricsim.read_simlabel(DIR + fname, datadir='')
+def update_scores_and_plot(all_scores, scores, all_times, times):
+    print(scores)
+    all_scores = np.hstack((all_scores, scores))
+    all_times = np.hstack((all_times, np.linspace(times[0], times[-1], len(scores))))
+    plt.plot(all_times, all_scores)
+    plt.xlabel('Time (sec)')
+    plt.ylabel('Score (??)')
+    plt.savefig(OUTPUT_DIR + 'scores.png', bbox_inches='tight')
+    plt.close()
+
 
 def score_chunk(bdata, times, klr, nrow, t_idx):
-    klr = Klr(None, precomputed_kernel=False)
     #print('Reading chunk ' + str(t_idx))
     last_idx = min(t_idx+TIME_CHUNK, bdata.shape[1])
     data_chunk = bdata[:, t_idx:last_idx]
