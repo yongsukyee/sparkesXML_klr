@@ -67,7 +67,7 @@ def main(fname, verbosity=1):
         print(np.sum(scores))
 
         fout.write(f"{nrow} {times[0]} {times[-1]}\n")
-    np.save(DIR + FNAME[:-3] + 'scores.npy', all_scores)
+    np.save(DIR + FNAME[:-3] + '/outputs/scores.npy', all_scores)
     fout.close()
     
 def update_scores_and_plot(all_scores, scores, all_times, times):
