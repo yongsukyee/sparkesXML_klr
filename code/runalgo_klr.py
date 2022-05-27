@@ -47,7 +47,7 @@ def main(fname, verbosity=1):
     #####
     all_scores = []
     all_times = []
-    for nrow in list(range(psrfile.nrows_file))[-3:]:
+    for nrow in range(psrfile.nrows_file):
         compute_t0 = time.time()
         bdata, times, _ = psrfile.getData(nrow, None, get_ft=True, 
             squeeze=True, transpose=True)
