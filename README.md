@@ -13,7 +13,7 @@ Download the single beam data from [SPARKESX](https://doi.org/10.25919/fd4f-0g20
 ## The outputs of the program
 The verbosity of results that are saved is controlled by the VERBOSITY parameter on line 24 of ``runalgo_klr.py``.
 1. If VERBOSITY <= 0. Results are written to a ``scores.npy`` file for each ``.sf`` file. These scores represent the power of each chunk as a function of time, and are also plotted in ``scores.png``.
-2. If VERBOSITY <= 1. The function f of the RKHS (i.e. the logits of the bernoulli distribution) are plotted for each chunk of data. These are called ``_t.png'', where ``t`` is the chunk index. 
+2. If VERBOSITY <= 1. The function f of the RKHS (i.e. the logits of the bernoulli distribution) are plotted for each chunk of data. These are called ``_t.png``, where ``t`` is the chunk index. 
 3. If VERBOSITY <= 2. The raw data itself is plotted in ``t.png``, where ``t`` is the chunk index.
 
 ## Collecting the outputs of the program
