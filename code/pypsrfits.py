@@ -2,7 +2,6 @@
 
 # Simple code to read search-mode PSRFITS data arrays into python
 # Adopted from Paul Demorest: https://github.com/demorest/pypsrfits
-# Updated on October 2020 by Suk Yee Yong
 # Description: Read 1-, 2-, 4-, 8-bit PSRFITS data
 # - python3 syntax
 # - itertools for loop
