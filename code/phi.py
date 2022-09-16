@@ -1,10 +1,10 @@
-import pypsrfits
-from klr.klr import Klr
+import pypsrfitsfrom klr
+.klr import Klr
 from klr.helpers import SquaredExponential
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
+
 
 from pathlib import Path
 from multiprocessing import Pool, set_start_method
@@ -17,11 +17,48 @@ import warnings
 warnings.filterwarnings('ignore') #TODO: some library is throwing warnings when plotting. Not sure what or why
 ###########################################################
 
-FNAME       = Path(sys.argv[1]).name # 'simplepulse_multi_01.sf'
-DIR         = Path(sys.argv[1]).parent.as_posix() + '/' # '/datasets/work/mlaifsp-sparkes/work/sparkesX/multi/simplepulse/'
-OUTPUT_DIR  = DIR + FNAME[:-3] + '/outputs/'
-TIME_CHUNK  = 50
-VERBOSITY   = 0
+
+class KlrScorer(object):
+    def __init__(self, klr):
+        self.klr = klr
+    
+    @staticmethod
+    def _make_X_data_pair(data, times = None):
+        if not (times is None):
+            t0 = times[0]; t1 = times[-1]
+        else:
+            t0 = 0; t1 = 1
+        times01 = np.linspace(t0, t1, data.shape[1])
+        freqs01 = np.linspace(1, 0, data.shape[0])
+        X = np.transpose([np.tile(freqs01, len(times01)), np.repeat(times01, len(freqs01))])
+
+        return X, np.reshape(data, (-1,1), order='F')
+
+    def score_chunk(self, bdata, times=None):
+        X_normalised, data_chunk = _make_X_data_pair(bdata, times)
+
+        X_normalised[:,1] = (X_normalised[:,1] - times[0])/\
+            (times[-1] -times[0])
+
+        self.klr.fit(X_normalised, data_chunk, num_iters=1, lamb=0.1)
+        scores = klr.predict_proba(X_normalised)
+        score = np.sum((data_chunk - 0.5) * (scores - 0.5))
+        return score
+
+
+class Phi(object):
+    def __init__(self, lengthscales):
+        self.klr_list = [None]*len(lengthscales)
+        for i, ls in enumerate(lengthscales):
+            k = SquaredExponential(ls)
+            self.klr_list[i] = Klr(k, precomputed_kernel=False, use_solver='scipy')
+
+    def __call__(self, bdata, times=None):
+        ret = np.zeros((len(self.klr_list),))
+        for i, k in enumerate(self.klr_list):
+            ret[i] = k.score_chunk(bdata, times)
+        return ret
+
 
 def main(fname, verbosity=1):
     print(fname)
@@ -31,13 +68,13 @@ def main(fname, verbosity=1):
     matplotlib_config()
 
     # Initialise KLR model
-    klr = Klr(SquaredExponential(1.), precomputed_kernel=False, use_solver='scipy')
+    phi = Phi([2, 1, 0.5])
     # Load file
     psrfile = pypsrfits.PSRFITS(DIR + fname)
-    
+
     fout = open(OUTPUT_DIR + FNAME[:-3] + '.txt', 'w')
     fout.write('# subint t0 t1\n')
-   
+
     #####
     # RUN ALGORITHM
     # Input bdata: 2d array with dimension [nfrequency, ntime]
@@ -46,10 +83,10 @@ def main(fname, verbosity=1):
     all_times = []
     for nrow in range(psrfile.nrows_file):
         compute_t0 = time.time()
-        bdata, times, _ = psrfile.getData(nrow, None, get_ft=True, 
+        bdata, times, _ = psrfile.getData(nrow, None, get_ft=True,
             squeeze=True, transpose=True)
         X, data = _make_X_data_pair(bdata, times)
-        #_plot_data_chunk(X, data, 'subints/' + str(nrow))
+        _plot_data_chunk(X, data, 'subints/' + str(nrow))
         t_indices = np.arange(0, bdata.shape[1], TIME_CHUNK)
         pool = Pool(processes=64)
         scores = pool.map(partial\
@@ -58,7 +95,7 @@ def main(fname, verbosity=1):
         pool.join()
         print('Subint ' + str(nrow) + ' took ' + str(time.time() - compute_t0)\
             + ' seconds.')
-        all_scores, all_times = update_scores_and_plot(all_scores, scores, 
+        all_scores, all_times = update_scores_and_plot(all_scores, scores,
             all_times, times)
         # Save to output if yes
         print(np.sum(scores))
@@ -66,7 +103,7 @@ def main(fname, verbosity=1):
         fout.write(f"{nrow} {times[0]} {times[-1]}\n")
     np.save(DIR + FNAME[:-3] + '/outputs/scores.npy', all_scores)
     fout.close()
-    
+
 def update_scores_and_plot(all_scores, scores, all_times, times):
     all_scores = np.hstack((all_scores, scores))
     all_times = np.hstack((all_times, np.linspace(times[0], times[-1], len(scores))))
@@ -137,3 +174,4 @@ def matplotlib_config():
 
 if __name__ == '__main__':
     main(FNAME, verbosity = VERBOSITY)
+
