@@ -4,7 +4,7 @@
 Download the single beam data from [SPARKESX](https://doi.org/10.25919/fd4f-0g20) > Files > sbeam > all folders.
 
 ## Running the code
-1. We use an open source implementation of kernel logistic regression (klr), which for anonymisation purposes we provide as a separate repo https://anonymous.4open.science/r/klr-7FEF/README.md. Unzip this directory, cd into it and install using ``python -m pip install .``
+1. We use an open source implementation of kernel logistic regression (klr) https://github.com/RussellTsuchida/klr. Unzip this directory, cd into it and install using ``python -m pip install .``
 2. Install the rest of the dependencies using ``python -m pip install -r requirements.txt``.
 3. Depending on your setup, you may wish to run the code differently. 
 4. We ran our expierments on a cluster that uses the SLURM job manager. To run code using SLURM, point to the location of the data on line 14 of ``run.sh``. Then us ``sbatch run.sh``.
